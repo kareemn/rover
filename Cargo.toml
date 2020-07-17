@@ -1,0 +1,17 @@
+[package]
+name = "rover"
+version = "0.1.0"
+authors = ["kareem"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+three = "0.4.0"
+cgmath = { version = "0.16", features = ["mint"] }
+portaudio = "0.7.0"
+dasp_ring_buffer = "0.11.0"
+
+[dependencies.dasp_signal]
+version = "0.11.0"
+features = ["rms"]
