@@ -5,6 +5,15 @@ use std::thread;
 use dasp_ring_buffer as ring_buffer;
 use dasp_signal::{self as signal, Signal};
 use dasp_signal::rms::SignalRms;
+use minifb::{Key, Window, WindowOptions};
+
+const WIDTH: usize = 100;
+const HEIGHT: usize = 1024;
+
+fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
+    let (r, g, b) = (r as u32, g as u32, b as u32);
+    (r << 16) | (g << 8) | b
+}
 
 fn main() {
     let mut win = three::Window::new("Three-rs shapes example");
@@ -75,14 +84,15 @@ fn main() {
 
     let sphere_geometry = three::Geometry::uv_sphere(2.0, 32, 32);
     let mut dynamic = {
-        let material = three::material::Wireframe { color: 0xFFFFFF };
-
+        let material = three::material::Wireframe{
+            color: 0xFFFFFF,
+        };
         // let material = three::material::Pbr{
-        //     base_color_factor: 0xA0ffA0,
-        //     base_color_alpha: 0.6,
+        //     base_color_factor: 0xffA0A0,
+        //     base_color_alpha: 0.3,
         //     metallic_factor: 1.0,
         //     roughness_factor: 0.5,
-        //     occlusion_strength: 0.1,
+        //     occlusion_strength: 0.5,
         //     emissive_factor: three::color::BLACK,
         //     normal_scale: 1.0,
         //     base_color_map: None,
@@ -93,7 +103,7 @@ fn main() {
         // };
         // let material = three::material::Phong {
         //     color: 0xffA0A0,
-        //     glossiness: 100.0,
+        //     glossiness: 80.0,
         // };
         // let material = three::material::Lambert {
         //     color: 0xA0ffA0,
@@ -103,6 +113,21 @@ fn main() {
     };
     dynamic.set_position([0.0, 0.0, 0.0]);
     win.scene.add(&dynamic);
+
+    let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    let mut window = Window::new(
+        "Test - ESC to exit",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+
+    // Limit to max ~60 fps update rate
+    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     println!("vertex count: {}", dynamic.vertex_count());
 
@@ -126,11 +151,6 @@ fn main() {
 
     let mut angle = cgmath::Rad::zero();
     
-    let vertex_count = dynamic.vertex_count();
-    let mut prev_val : Vec<f32> = Vec::with_capacity(vertex_count);
-    for i in 0..vertex_count {
-        prev_val.push(1.0) ;
-    }
 
     while win.update() && !win.input.hit(three::KEY_ESCAPE) {
         // if let Some(diff) = win.input.timed(three::AXIS_LEFT_RIGHT) {
@@ -144,22 +164,32 @@ fn main() {
             .build();
 
         // Compute the spectrogram giving the number of bins and the window overlap.
-        spectrograph.compute(512, 0.99);
+        spectrograph.compute(1024, 0.1);
         
         let bins = spectrograph.create_in_memory(false);
         spectrograph.save_as_png(&std::path::Path::new("test.png"), true).expect("didnt work");
         // println!("{}", rms_signal);
-        
+        let vertex_count = dynamic.vertex_count();
         {
             let mut vmap = win.factory.map_vertices(&mut dynamic);
             for i in 0..vertex_count {
-                let dir = cgmath::Vector4::from(vmap[i].pos).truncate();
+                let v_i = (i + 256+512) % vertex_count;
+                let mut ratio = (bins[i]-4.0) / 4.0;
+                if ratio < 0.0 {
+                    ratio = 0.0 ;
+                }
+                for j in 0..WIDTH {
+                    frame_buffer[v_i*WIDTH + j] = from_u8_rgb((ratio * 255 as f32) as u8, 0, 0);
+                }
+                let dir = cgmath::Vector4::from(vmap[v_i].pos).truncate();
                 let pos = cgmath::Point3::from_vec(1.0 * dir);
-                let ratio = bins[i] / prev_val[i];
-                vmap[i].pos = [pos.x, pos.y, pos.z, (15.0+0.1*ratio.powf(2.0))/(bins[i].powf(2.0))];
-                prev_val[i] = bins[i];
+                ratio += 1.0;
+                vmap[v_i].pos = [pos.x, pos.y, pos.z, 1.0/ratio.powf(3.0)];
             }
         }
+        window
+            .update_with_buffer(&frame_buffer, WIDTH, HEIGHT)
+            .unwrap();
 
         angle += cgmath::Rad(1.5 * rms_signal *100.0);
         // point_light.set_position([1.0* rms_signal *100000.0, 35.0, 35.0]);
