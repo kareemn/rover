@@ -13,6 +13,8 @@ portaudio = "0.7.0"
 dasp_ring_buffer = "0.11.0"
 sonogram = "0.4.3"
 minifb = "0.17"
+tch = "0.1.7"
+rand = "0.6.5"
 
 [dependencies.dasp_signal]
 version = "0.11.0"
