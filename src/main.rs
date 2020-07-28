@@ -88,7 +88,7 @@ fn main() {
 
     // Limit to max ~60 fps update rate
     gan_window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
-    let model = tch::CModule::load("./traced_portrait_dgan.pt").expect("could not load torch model");
+    let model = tch::CModule::load("./traced_landscape_dgan.pt").expect("could not load torch model");
 
     let mut noise: Vec<f32> = vec![0.0; 100];
 
@@ -126,15 +126,15 @@ fn main() {
                 }
                 if i % 10 == 0 {
                     let random_index = indicies[i/10];
-                    noise[random_index] = noise[random_index]/1.2; // (ratio - 0.1)* 10.0;
+                    noise[random_index] = noise[random_index]/1.01; // (ratio - 0.1)* 10.0;
                     if direction[random_index] == 0 {
-                        noise[random_index] = noise[random_index] - ratio*6.0;
+                        noise[random_index] = noise[random_index] - ratio*4.0;
                     } else {
-                        noise[random_index] = noise[random_index] + ratio*6.0;
+                        noise[random_index] = noise[random_index] + ratio*4.0;
                     }
-                    if noise[random_index] > 2.0 {
+                    if noise[random_index] > 1.25 {
                         direction[random_index] = 0;
-                    } else if noise[random_index] < -2.0 {
+                    } else if noise[random_index] < -1.25 {
                         direction[random_index] = 1;
                     }
                     // println!("{:?}", noise);
